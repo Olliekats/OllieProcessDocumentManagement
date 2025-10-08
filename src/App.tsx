@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { AuthForm } from './components/AuthForm';
+import { keyboardNavigation } from './utils/keyboardNavigation';
+import { screenReaderService } from './utils/screenReaderService';
 import {
   LayoutDashboard,
   GitBranch,
@@ -20,6 +22,9 @@ import {
   Zap,
   BookOpen,
   FileText,
+  Bell,
+  Volume2,
+  VolumeX,
 } from 'lucide-react';
 import {
   ProcessDashboard,
@@ -43,8 +48,10 @@ import {
   SmartKnowledgeManagement,
   TechnicalSpecs,
   EnhancedSOPBuilder,
+  UserSettings,
 } from './modules';
 import GlobalAIAssistant from './components/GlobalAIAssistant';
+import { NotificationCenter } from './components/NotificationCenter';
 
 interface NavItem {
   id: string;
@@ -202,6 +209,46 @@ const AppContent: React.FC = () => {
   const [activeView, setActiveView] = useState('dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [screenReaderEnabled, setScreenReaderEnabled] = useState(screenReaderService.isEnabled());
+
+  useEffect(() => {
+    keyboardNavigation.init();
+    document.body.classList.remove('no-keyboard-nav');
+
+    const handleMouseDown = () => {
+      document.body.classList.add('no-keyboard-nav');
+    };
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Tab') {
+        document.body.classList.remove('no-keyboard-nav');
+        document.body.classList.add('keyboard-navigating');
+      }
+    };
+
+    document.addEventListener('mousedown', handleMouseDown);
+    document.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      keyboardNavigation.destroy();
+      document.removeEventListener('mousedown', handleMouseDown);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (activeView && screenReaderService.isEnabled()) {
+      const moduleName = activeView === 'settings' ? 'Settings' :
+                        navItems.find(item => item.id === activeView)?.label || 'Dashboard';
+      screenReaderService.announceNavigation(moduleName);
+    }
+  }, [activeView]);
+
+  const toggleScreenReader = () => {
+    const newState = !screenReaderEnabled;
+    setScreenReaderEnabled(newState);
+    screenReaderService.setEnabled(newState);
+  };
 
   const handleSignOut = async () => {
     console.log('Sign out clicked');
@@ -219,6 +266,8 @@ const AppContent: React.FC = () => {
 
   const activeItem = navItems.find((item) => item.id === activeView);
 
+  const settingsView = activeView === 'settings' ? <UserSettings /> : null;
+
   const filteredNavItems = navItems.filter((item) =>
     item.label.toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -232,12 +281,20 @@ const AppContent: React.FC = () => {
   }, {} as Record<string, NavItem[]>);
 
   return (
-    <div className="flex h-screen bg-slate-50">
-      <aside
-        className={`${
-          sidebarOpen ? 'w-72' : 'w-20'
-        } bg-white border-r border-slate-200 transition-all duration-300 flex flex-col`}
-      >
+    <>
+      <a href="#main-content" className="skip-to-main">
+        Skip to main content
+      </a>
+      <div id="screen-reader-announcer" className="sr-only" aria-live="polite" aria-atomic="true"></div>
+
+      <div className="flex h-screen bg-slate-50">
+        <aside
+          role="navigation"
+          aria-label="Main navigation"
+          className={`${
+            sidebarOpen ? 'w-72' : 'w-20'
+          } bg-white border-r border-slate-200 transition-all duration-300 flex flex-col`}
+        >
         <div className="p-6 border-b border-slate-200">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -254,6 +311,8 @@ const AppContent: React.FC = () => {
             <button
               onClick={() => setSidebarOpen(!sidebarOpen)}
               className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
+              aria-label={sidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'}
+              aria-expanded={sidebarOpen}
             >
               <GitBranch size={18} className="text-slate-600" />
             </button>
@@ -265,11 +324,12 @@ const AppContent: React.FC = () => {
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
               <input
-                type="text"
+                type="search"
                 placeholder="Search modules..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                aria-label="Search modules"
               />
             </div>
           </div>
@@ -293,6 +353,9 @@ const AppContent: React.FC = () => {
                             ? 'bg-blue-50 text-blue-600 font-medium shadow-sm'
                             : 'text-slate-600 hover:bg-slate-50'
                         }`}
+                        data-module-id={item.id}
+                        aria-label={`Navigate to ${item.label}`}
+                        aria-current={activeView === item.id ? 'page' : undefined}
                       >
                         {item.icon}
                         <span className="text-sm">{item.label}</span>
@@ -314,6 +377,9 @@ const AppContent: React.FC = () => {
                       : 'text-slate-600 hover:bg-slate-50'
                   }`}
                   title={item.label}
+                  data-module-id={item.id}
+                  aria-label={`Navigate to ${item.label}`}
+                  aria-current={activeView === item.id ? 'page' : undefined}
                 >
                   {item.icon}
                 </button>
@@ -333,6 +399,13 @@ const AppContent: React.FC = () => {
                   <p className="text-sm font-medium text-slate-800 truncate">{user.email}</p>
                   <p className="text-xs text-slate-500">Process Manager</p>
                 </div>
+                <button
+                  onClick={() => setActiveView('settings')}
+                  className="p-2 hover:bg-slate-100 rounded-lg transition-colors text-slate-600 hover:text-blue-600"
+                  title="Settings"
+                >
+                  <Settings size={18} />
+                </button>
               </div>
               <button
                 onClick={handleSignOut}
@@ -343,28 +416,78 @@ const AppContent: React.FC = () => {
               </button>
             </div>
           ) : (
-            <button
-              onClick={handleSignOut}
-              className="w-full p-2 hover:bg-slate-100 rounded-lg transition-colors text-slate-600 hover:text-red-600"
-              title="Sign out"
-            >
-              <LogOut size={18} />
-            </button>
+            <div className="space-y-2">
+              <button
+                onClick={() => setActiveView('settings')}
+                className="w-full p-2 hover:bg-slate-100 rounded-lg transition-colors text-slate-600 hover:text-blue-600"
+                title="Settings"
+              >
+                <Settings size={18} />
+              </button>
+              <button
+                onClick={handleSignOut}
+                className="w-full p-2 hover:bg-slate-100 rounded-lg transition-colors text-slate-600 hover:text-red-600"
+                title="Sign out"
+              >
+                <LogOut size={18} />
+              </button>
+            </div>
           )}
         </div>
       </aside>
 
-      <main className="flex-1 overflow-auto">
-        <div className="p-8">
-          {activeItem?.component}
-        </div>
-      </main>
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <header className="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between">
+          <div>
+            <h2 className="text-xl font-semibold text-slate-800">
+              {activeView === 'settings' ? 'Settings' : activeItem?.label || 'Dashboard'}
+            </h2>
+            <p className="text-sm text-slate-500 mt-0.5">
+              {activeView === 'settings' ? 'Manage your account and preferences' : 'Welcome to your workspace'}
+            </p>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <button
+              onClick={toggleScreenReader}
+              className={`p-2 rounded-lg transition-colors ${
+                screenReaderEnabled
+                  ? 'bg-blue-100 text-blue-700'
+                  : 'text-slate-600 hover:bg-slate-100'
+              }`}
+              title={screenReaderEnabled ? 'Disable screen reader' : 'Enable screen reader'}
+              aria-label={screenReaderEnabled ? 'Disable screen reader' : 'Enable screen reader'}
+              aria-pressed={screenReaderEnabled}
+            >
+              {screenReaderEnabled ? <Volume2 size={20} /> : <VolumeX size={20} />}
+            </button>
+
+            <NotificationCenter />
+
+            <button
+              onClick={() => setActiveView('settings')}
+              className="p-2 text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+              title="Settings"
+              aria-label="Open settings"
+            >
+              <Settings size={20} />
+            </button>
+          </div>
+        </header>
+
+        <main id="main-content" role="main" aria-label="Main content" className="flex-1 overflow-auto">
+          <div className="p-8">
+            {settingsView || activeItem?.component}
+          </div>
+        </main>
+      </div>
 
       <GlobalAIAssistant
         currentModule={activeView}
-        currentModuleName={activeItem?.label}
+        currentModuleName={activeView === 'settings' ? 'Settings' : activeItem?.label}
       />
-    </div>
+      </div>
+    </>
   );
 };
 

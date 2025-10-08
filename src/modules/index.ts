@@ -21,6 +21,7 @@ export { default as KnowledgeManagement } from './KnowledgeManagement';
 export { SmartKnowledgeManagement } from './SmartKnowledgeManagement';
 export { TechnicalSpecs } from './TechnicalSpecs';
 export { default as EnhancedSOPBuilder } from './EnhancedSOPBuilder';
+export { UserSettings } from './UserSettings';
 
 export const SOPBuilder = createEnhancedModule({
   title: 'SOP Builder',
