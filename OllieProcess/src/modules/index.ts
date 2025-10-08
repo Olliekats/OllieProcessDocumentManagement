@@ -1,0 +1,17 @@
+export { ProcessDashboard } from './ProcessDashboard';
+export { ProcessMapping } from './ProcessMapping';
+export { EnhancedProcessMapping } from './EnhancedProcessMapping';
+export { default as EnhancedProcessManagement } from './EnhancedProcessManagement';
+export { VisualBPMN } from './VisualBPMN';
+export { default as ProcessExecution } from './ProcessExecution';
+export { default as ProcessAnalytics } from './ProcessAnalytics';
+export { default as ProcessPerformance } from './ProcessPerformance';
+export { default as MyProcessTasks } from './MyProcessTasks';
+export { ProcessDiscoveryMining } from './ProcessDiscoveryMining';
+export { ProcessOptimizationAI } from './ProcessOptimizationAI';
+export { ProcessSimulationEngine } from './ProcessSimulationEngine';
+export { ProcessComplianceHub } from './ProcessComplianceHub';
+export { DynamicProcessOrchestrator } from './DynamicProcessOrchestrator';
+export { default as BottleneckDetection } from './BottleneckDetection';
+export { default as AIRecommendations } from './AIRecommendations';
+export { ApprovalsQueue } from './ApprovalsQueue';
